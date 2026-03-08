@@ -1,0 +1,156 @@
+What are Kubernetes Namespaces?
+Namespaces are logical partitions inside a Kubernetes cluster that help you:
+Organize resources
+
+
+Isolate environments
+
+
+Apply security and limits per group
+
+
+👉 Think of namespaces like folders inside one Kubernetes cluster.
+Why Namespaces Are Important
+
+Problem 			How Namespace Helps
+
+Multiple teams			Each team gets its own namespace	
+
+Dev / QA / Prod separation	Isolated namespaces
+
+RBAC & Security		Permissions per namespace
+
+Resource limits		CPU / Memory quotas
+
+Avoid name conflicts		Same pod name allowed in different namespaces
+
+Default Namespaces in Kubernetes
+
+Namespace			Purpose	
+
+Default				User workloads   
+Set default namespace context 
+ > kubectl config set-context --current --namespace=kube-system 
+
+Kube-system			Core K8s components
+
+Kube-public     		Public cluster info
+
+Kube-node-lease		Node heartbeat leases
+
+Get list of namespaces 
+
+> kubectl get namespaces or kubectl get ns 
+
+Create custom namespace  create like imperative way 
+
+> kubectl create namespace dev 
+> kubectl create namespace qa 
+
+Verify 
+
+> kubectl get ns 
+
+Create pod in custom name space
+
+> kubectl run nginx --image=nginx -n dev
+> kubectl run nginx --image=nginx -n qa
+
+View all pods in namespace
+
+> kubectl get pods –all-namespaces 
+
+Or 
+
+> kubectl get pods -A 
+
+View pods in specific namespaces	
+
+> kubectl get po -n dev 
+> kubectl get pods -n qa
+
+How Kubernetes Internally Differentiates Namespaces
+<namespace>/<resource-name>
+dev/nginx
+qa/nginx
+What is NOT Namespaced? (Cluster-wide Objects)
+Resource 				Scope 
+Nodes					Cluster-wide
+PersistentVolumes			Cluster-wide
+Namespaces				Cluster-wide
+ClusterRoles				Cluster-wide
+
+Namespace + RBAC (Security Example)
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: dev
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+Namespace + ResourceQuota Example
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dev-quota
+  namespace: dev
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "4"
+    limits.memory: "8Gi"
+
+
+POD
+
+--> Make a Pod request to API server using a local pod definition file
+--> The API server saves the info for the pod in ETCD
+--> The scheduler finds the unscheduled pod and schedules it to node.
+--> Kubelet running on the node, sees the pod scheduled and fires up container-runtime.
+--> The entire lifecycle state of the pod is stored in ETCD.
+
+
+Pod YAML → API Server → Scheduler → Node → Kubelet → Containers
+
+
+
+
+
+
+
+Pod Concepts
+-------------
+--> Pod is ephemeral(lasting for a very short time) and won’t be rescheduled to a  new node once it dies.
+--> You should not directly create/use Pod for deployment, Kubernetes have  controllers like Replica Sets, Deployment, Deamon sets to keep pod alive.
+
+One-container-per-pod. 
+----------------------
+This model is  the most popular. POD is the “wrapper”  for a single container. Since pod is the  smallest object that K8S recognizes, 
+it  manages the pods instead of directly  managing the containers.
+
+
+Multi-container-pod or Sidecar  containers 
+------------------------------------------
+In this model, a pod can hold  multiple co-located containers primary  container And utility container that  
+helps or enhances how an application  functions (examples of sidecar  containers are log shippers/watchers  and monitoring agents).
+
+
+Create a pod manifest file 
+
+Before creating the manifest file just do the dry run this 
+Checks the creation servers level checks 
+> kubectl apply -f mongo-db.yml --dry-run=server
+Checks the syntax 
+> kubectl apply -f mongo-db.yml --dry-run=client 
+
+Get all pods in dev a namespace
+
+ 
+
+
+ 
+
+
