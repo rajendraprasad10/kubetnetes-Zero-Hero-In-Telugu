@@ -1,0 +1,365 @@
+Cluster setup 
+
+I have setup the on prime cluster but suddenly kubeam join is meesied how do i manage then for forther new worker nodes join and already joined nodes what will happen ? 
+
+
+Kubeadm key will stored in this location
+
+ /etc/kubernetes/kubelet.conf nodes what about master 
+
+
+If server restarted what will happen again we need to join or is it stored one reused 
+
+
+kubeadm init   what it will do 
+
+
+What exactly this will do 
+
+kubeadm join 172.31.23.178:6443 --token ysje0h.8odi5z6ftd082kwn \
+	--discovery-token-ca-cert-hash sha256:d0f7adf02e963ee12b830cd6d47809b4bf4e14ca4dd527039e8d3dadeac4ed64 
+
+
+
+ Scenario: kubeadm join command is missing / lost
+❓ “I set up an on-prem cluster. Later, the kubeadm join command is missing. How do I add new worker nodes? What happens to existing nodes?”
+✅ Short Answer
+Already joined nodes → NOTHING happens (they keep working)
+
+
+New nodes → You must generate a new join command
+
+
+Cluster state is NOT lost
+
+
+
+🔹 Where kubeadm Stores Information
+📌 Worker Node
+/etc/kubernetes/kubelet.conf
+
+What it contains
+Client certificate
+
+
+API server endpoint
+
+
+Used by kubelet to authenticate
+
+
+✔ This is why already joined nodes do NOT need to rejoin
+
+📌 Control Plane (Master)
+File
+Purpose
+/etc/kubernetes/admin.conf
+Admin kubeconfig
+/etc/kubernetes/controller-manager.conf
+Controller auth
+/etc/kubernetes/scheduler.conf
+Scheduler auth
+/etc/kubernetes/pki/*
+Cluster certificates
+/etc/kubernetes/manifests/*
+Static pods
+
+👉 Master uses static pods, not systemd services.
+
+
+
+🔹 What Happens If Server Restarts?
+🔁 Worker Node Restart
+kubelet starts
+
+
+reads /etc/kubernetes/kubelet.conf
+
+
+reconnects to API server
+
+
+✅ No re-join required
+
+🔁 Control Plane Restart
+kubelet starts
+
+
+static pods restart automatically:
+
+
+kube-apiserver
+
+
+etcd
+
+
+controller-manager
+
+
+scheduler
+
+
+✅ Cluster recovers automatically
+
+❌ When Re-Join Is Required?
+Only if:
+/etc/kubernetes is deleted
+
+
+Node OS reinstalled
+
+
+Certificates are manually removed
+
+
+
+🔹 What Happens to Already Joined Nodes?
+Situation
+Result
+Token expired
+❌ No impact
+Join command lost
+❌ No impact
+API server restart
+❌ No impact
+Node restart
+❌ No impact
+
+Tokens are only for joining, not for daily operation.
+
+🔹 kubeadm init – What It REALLY Does
+kubeadm init
+
+🔹 Internal Steps
+1️⃣ Generates CA & certificates
+ 2️⃣ Starts etcd
+ 3️⃣ Starts API server
+ 4️⃣ Starts controller-manager & scheduler
+ 5️⃣ Writes kubeconfigs
+ 6️⃣ Creates static pod manifests
+ 7️⃣ Generates bootstrap token
+ 8️⃣ Prints kubeadm join command
+📌 Files Created
+/etc/kubernetes/pki/
+/etc/kubernetes/manifests/
+/etc/kubernetes/admin.conf
+
+⚠️ Important
+❌ kubeadm init should be run ONLY ONCE
+
+🔹 kubeadm join – What Exactly Happens
+kubeadm join 172.31.23.178:6443 \
+--token ysje0h.8odi5z6ftd082kwn \
+--discovery-token-ca-cert-hash sha256:d0f7adf02e963ee12b830cd6d47809b4bf4e14ca4dd527039e8d3dadeac4ed64
+
+🔹 Line-by-Line Explanation
+1️⃣ API Server Endpoint
+172.31.23.178:6443
+
+➡️ Where kubelet connects
+
+2️⃣ Token
+--token ysje0h.8odi5z6ftd082kwn
+
+➡️ Temporary authentication token
+ ➡️ Default validity: 24 hours
+
+3️⃣ CA Hash
+--discovery-token-ca-cert-hash sha256:...
+
+➡️ Prevents MITM attack
+ ➡️ Confirms API server identity
+
+🔹 What kubeadm join Does Internally
+1️⃣ Verifies token
+ 2️⃣ Validates API server certificate
+ 3️⃣ Fetches cluster CA
+ 4️⃣ Generates kubelet cert
+ 5️⃣ Writes /etc/kubernetes/kubelet.conf
+ 6️⃣ Registers node in API server
+
+🔹 Token Expired or Join Command Lost? (Most Common Issue)
+✅ Generate New Join Command
+On control plane:
+kubeadm token create --print-join-command
+
+✔ Safe
+ ✔ Existing nodes unaffected
+ ✔ New workers can join
+
+🔹 View Existing Tokens
+kubeadm token list
+
+
+🔹 Create Token With Long Expiry
+kubeadm token create --ttl 0
+
+
+🔹 Certificate Expiry (Advanced)
+Check cert expiration
+kubeadm certs check-expiration
+
+Renew certs
+kubeadm certs renew all
+
+
+🔹 Common Failure Scenarios (Interview Gold)
+Issue
+Cause
+Fix
+Node NotReady
+CNI missing
+Install CNI
+Join fails
+Token expired
+Create new token
+TLS error
+Wrong CA hash
+Re-copy join command
+API unreachable
+Firewall
+Open 6443
+Kubelet crash
+Swap enabled
+Disable swap
+
+
+🔹 Interview One-Liners (VERY IMPORTANT)
+✅ Already joined nodes do NOT rejoin after restart
+ ✅ Join token is only for onboarding
+ ✅ Cluster state is stored in etcd
+ ✅ kubelet.conf persists authentication
+ ✅ kubeadm init creates static pods
+
+🔹 Architecture Summary (Mental Model)
+kubeadm init
+   ↓
+Certificates + etcd + control plane
+   ↓
+kubeadm join
+   ↓
+kubelet.conf created
+   ↓
+Node permanently registered
+
+
+If you want next:
+🔹 kubeadm join troubleshooting checklist
+
+
+🔹 HA control plane join (--control-plane)
+
+
+🔹 etcd backup & restore
+
+
+🔹 Disaster recovery interview questions
+
+
+Just tell me 👍
+if token expored what will happen
+🔹 If kubeadm token expires, what will happen?
+👉 Nothing breaks in your existing cluster.
+ This is a very common misunderstanding, so let’s be very clear.
+
+✅ What DOES NOT happen
+If the token expires:
+❌ Existing worker nodes do NOT go NotReady
+ ❌ Running pods do NOT stop
+ ❌ kubelet does NOT disconnect
+ ❌ Control plane does NOT restart
+ ❌ Cluster does NOT lose state
+The token is NOT used for daily authentication.
+
+❌ What DOES happen
+🚫 New nodes cannot join the cluster using the expired token
+You’ll see errors like:
+token has expired
+
+or
+authentication failed
+
+That’s it.
+
+🔹 Why Existing Nodes Keep Working (Important)
+Once a node joins:
+kubeadm creates certificates
+
+
+kubelet uses:
+
+ /etc/kubernetes/kubelet.conf
+
+
+kubelet authenticates using client certificates, not tokens
+
+
+➡️ Tokens are one-time bootstrap only.
+
+🔹 Token Usage Lifecycle
+kubeadm join
+   ↓
+token used ONCE
+   ↓
+kubelet cert issued
+   ↓
+token no longer needed
+
+
+🔹 Token Expiry Default
+Default TTL: 24 hours
+
+
+Stored in:
+
+ kube-system namespace
+
+
+Check tokens:
+kubeadm token list
+
+
+🔹 How to Fix Token Expiry (Safe & Easy)
+On control plane:
+kubeadm token create --print-join-command
+
+✔ Generates new token
+ ✔ Prints new join command
+ ✔ Existing nodes unaffected
+
+🔹 Create a Token That Never Expires (Not Recommended for Prod)
+kubeadm token create --ttl 0
+
+⚠️ Use only in labs
+
+🔹 Special Case: Node Reboot + Token Expired
+Scenario
+Result
+Worker node reboot
+✅ Works
+Control plane reboot
+✅ Works
+Token expired
+❌ Only affects NEW joins
+
+
+🔹 When Would a Node Need to Rejoin?
+Only if:
+/etc/kubernetes is deleted
+
+
+OS reinstalled
+
+
+Certificates removed
+
+
+Then:
+ ➡️ New token required
+
+🔹 Interview One-Liners ⭐
+kubeadm tokens are only used for initial node bootstrap and have no impact on already joined nodes after expiry.
+
+
+
